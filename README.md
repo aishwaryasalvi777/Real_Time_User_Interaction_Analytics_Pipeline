@@ -1,138 +1,165 @@
-Real-Time User Interaction Analytics Pipeline
+🛰️ Real-Time User Interaction Analytics Pipeline
+This project simulates a real-time e-commerce environment where user interactions (like views, add-to-cart, and purchases) are streamed, aggregated, and analyzed to detect churn and visualize funnel trends using an end-to-end data pipeline.
 
-🧠 Objective:
+🎯 Objective
+Build a full-stack real-time analytics system that:
 
-Build a real-time data pipeline to simulate, stream, process, store, and visualize user behavior events (views, cart additions, purchases) from an e-commerce platform. The goal is to enable funnel analysis, churn prediction, and live KPIs to support marketing and product decisions.
+Ingests simulated user activity via Kafka.
 
-⚙️ Architecture Overview:
+Processes streams with Spark Structured Streaming.
 
-Tech Stack: Kafka, Spark Structured Streaming, PostgreSQL, FastAPI, Streamlit, Docker Compose
+Writes aggregates and predictions to PostgreSQL.
 
-+-------------+        +----------------+         +----------------+         +-------------------+        +-------------+
-| Kafka       | -----> | Spark Consumer | ----->  | Spark Aggregator| -----> | PostgreSQL        | -----> | Streamlit   |
-| Producer    |        | (Raw Events)   |         | (Funnel Counts)|         | (Event DB + KPIs) |        | Dashboard   |
-+-------------+        +----------------+         +----------------+         +-------------------+        +-------------+
-                                                                       \
-                                                                        \-> FastAPI (Churn Model Serving)
+Predicts user churn in real time using a trained model.
 
-📦 Project Structure
+Visualizes data with an interactive Streamlit dashboard.
 
+📌 Key Features
+✅ Kafka-based real-time event ingestion.
+
+✅ Spark Streaming for session-level aggregation.
+
+✅ Churn prediction using Logistic Regression.
+
+✅ PostgreSQL for structured storage of KPIs and churn.
+
+✅ Streamlit dashboard for real-time funnel and churn analysis.
+
+✅ Modular & Dockerized for easy deployment.
+
+🧱 Architecture
+mermaid
+Copy
+Edit
+flowchart TD
+    A[Kafka Producer: Simulated Events] --> B[Spark Streaming]
+    B --> C1[Funnel Aggregates → PostgreSQL]
+    B --> C2[Churn Features → Logistic Regression Model]
+    C2 --> C3[Churn Predictions → PostgreSQL]
+    C1 & C3 --> D[Streamlit Dashboard]
+📂 Project Structure
+pgsql
+Copy
+Edit
 realtime-user-analytics/
-├── kafka_producer/           # Simulates real-time user behavior
+├── kafka_producer/
 │   └── producer.py
-│
-├── spark_streaming/          # Real-time data processing using Spark
+├── spark_streaming/
 │   ├── consumer.py
-│   ├── aggregator.py         # Performs windowed aggregations for funnel KPIs
-│   └── churn_feature_engineering.py  # Generates churn features & writes to PostgreSQL
-│
-├── postgres_writer/          # Writes aggregated outputs to PostgreSQL
+│   ├── aggregator.py
+│   └── churn_feature_engineering.py
+├── postgres_writer/
 │   └── writer.py
-│
-├── ml_model/                 # Churn model + API
+├── ml_model/
 │   ├── train_churn_model.py
-│   ├── fastapi_app.py
-│   └── churn_model.pkl
-│
-├── dashboard/                # Streamlit dashboard
+│   ├── churn_model.pkl
+│   └── fastapi_app.py
+├── dashboard/
 │   └── app.py
-│
-├── config/                   # Configs for Kafka, Spark, and DB
-│
-├── docker/                   # Docker Compose for Kafka, PostgreSQL, Spark
+├── config/
+│   ├── kafka_config.json
+│   ├── spark_config.json
+│   └── db_config.json
+├── docker/
 │   └── docker-compose.yml
-│
 ├── requirements.txt
-├── run_all.sh                # Convenience script to launch the pipeline
+├── run_all.sh
 └── README.md
+⚙️ Tech Stack
+Layer	Tech
+Event Stream	Apache Kafka
+Processing	Apache Spark Structured Streaming
+Storage	PostgreSQL
+Model	Scikit-learn Logistic Regression
+Dashboard	Streamlit
+Deployment	Docker, Docker Compose
+API	FastAPI (for model deployment, optional)
 
-🔄 Phase-by-Phase Breakdown
+🚀 How to Run
+Pre-requisites: Docker, Python 3.10+, pip
 
-✅ Phase 1: Kafka Producer Setup
+1. Clone Repo
+bash
+Copy
+Edit
+git clone https://github.com/your-username/realtime-user-analytics.git
+cd realtime-user-analytics
+2. Start Docker Services
+bash
+Copy
+Edit
+docker-compose -f docker/docker-compose.yml up
+3. Install Dependencies
+bash
+Copy
+Edit
+pip install -r requirements.txt
+4. Train Churn Model
+bash
+Copy
+Edit
+python ml_model/train_churn_model.py
+5. Run Kafka Producer
+bash
+Copy
+Edit
+python kafka_producer/producer.py
+6. Start Spark Streaming Jobs
+bash
+Copy
+Edit
+python spark_streaming/consumer.py
+python spark_streaming/aggregator.py
+python spark_streaming/churn_feature_engineering.py
+7. Launch Dashboard
+bash
+Copy
+Edit
+streamlit run dashboard/app.py
+📊 Dashboard Features
+Tab	Description
+📈 Real-Time KPIs	View, Add-to-Cart, Purchase trends by time
+🔄 Funnel Summary	Conversion funnel per session/user
+⌛ User-Level Stats	Per-user event tracking
+🛑 At-Risk Users	Real-time churn prediction using ML
 
-Implemented producer.py to emit synthetic user events (view, add_to_cart, purchase) with realistic bias.
+Dashboard auto-refreshes every 10s.
 
-Ensured timestamp is included for proper event-time tracking.
+🧠 Model Info: Churn Prediction
+Features: num_views, num_adds_to_cart
 
-Topics sent to Kafka: user_events
+Target: Session that ends without purchase → churn
 
-✅ Phase 2: Spark Consumer and Aggregator
+Model: Logistic Regression (balanced, interpretable)
 
-consumer.py reads Kafka messages and writes raw events to PostgreSQL (raw_events table).
+Format: Trained using train_churn_model.py, saved as churn_model.pkl
 
-aggregator.py performs 10-minute tumbling window aggregations with watermarking.
+🧪 Testing the System
+Kafka emits biased events: 60% views, 30% add-to-cart, 10% purchases.
 
-Results stored in funnel_summary for dashboard usage.
+PostgreSQL stores tables:
 
-✅ Phase 3: Feature Engineering for Churn
+user_events_raw
 
-Created churn_feature_engineering.py to read events and build churn-related features like:
+funnel_summary
 
-Total view/add_to_cart/purchase events per user
+churn_predictions
 
-Time since last interaction
+🔍 Interview Soundbites
+“Built an end-to-end real-time data pipeline using Kafka → Spark → PostgreSQL → Streamlit.”
 
-Spark watermarking used with correctness-safe logic to avoid late event issues.
+“Predicted churn based on session-level features using a deployed Logistic Regression model.”
 
-Writes features into churn_features table in PostgreSQL.
+“Designed fully containerized environment with modular ETL + analytics pipeline.”
 
-✅ Phase 4: Churn Prediction Model
+“Dashboard auto-refreshes to show live KPIs and churn insights for business stakeholders.”
 
-Built model using logistic regression in train_churn_model.py.
+📌 Future Improvements
+Add user segmentation & cohort analysis.
 
-Trained on aggregated behavioral data.
+Integrate email/SMS alerts for churned users.
 
-Model saved as churn_model.pkl.
+Use PyTorch or XGBoost for better churn prediction.
 
-fastapi_app.py exposes /predict endpoint to serve real-time churn predictions.
-
-✅ Phase 5: Real-Time Dashboard
-
-Streamlit dashboard in dashboard/app.py:
-
-Funnel KPIs (view → cart → purchase)
-
-Live churn predictions (churned / not churned users)
-
-Auto-refresh for real-time visibility
-
-✅ Deliverables:
-
-Real-time Kafka → Spark → PostgreSQL → Dashboard pipeline
-
-Docker Compose setup for reproducibility
-
-Trained churn prediction model & live prediction API
-
-Interactive Streamlit dashboard
-
-🧪 How to Run
-
-Start the full pipeline:
-
-bash run_all.sh
-
-Open the Streamlit dashboard:
-
-http://localhost:8501
-
-Trigger churn predictions (optional):
-
-Exposed via FastAPI
-
-curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d '{"user_id": "user_123"}'
-
-🚀 Key Highlights for Interviews
-
-Spark Structured Streaming: windowed aggregations + watermarking for correctness
-
-Model Deployment: FastAPI + real-time inference
-
-Kafka and PostgreSQL integration
-
-Streamlit dashboard for live KPI tracking
-
-End-to-end Dockerized pipeline
-
-✅ Project Complete — Real-Time Behavioral Analytics & Churn Model
+Expose FastAPI endpoint for real-time scoring from external tools.
 
