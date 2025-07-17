@@ -1,165 +1,143 @@
-🛰️ Real-Time User Interaction Analytics Pipeline
-This project simulates a real-time e-commerce environment where user interactions (like views, add-to-cart, and purchases) are streamed, aggregated, and analyzed to detect churn and visualize funnel trends using an end-to-end data pipeline.
+# 📊 Real-Time User Interaction Analytics Pipeline
 
-🎯 Objective
-Build a full-stack real-time analytics system that:
+This project builds a **real-time analytics system** that ingests simulated e-commerce user interaction events (e.g., view, add\_to\_cart, purchase), processes them using **Apache Kafka** and **Spark Structured Streaming**, stores summaries in **PostgreSQL**, applies a **churn prediction ML model**, and visualizes insights on a **Streamlit dashboard**.
 
-Ingests simulated user activity via Kafka.
+---
 
-Processes streams with Spark Structured Streaming.
+## ✅ Objective
 
-Writes aggregates and predictions to PostgreSQL.
+To design and deploy a real-time data pipeline that:
 
-Predicts user churn in real time using a trained model.
+* Simulates user behavior on an e-commerce platform.
+* Aggregates event data for funnel analysis.
+* Predicts churn using a trained ML model in real time.
+* Displays key KPIs and churn alerts on a live dashboard.
 
-Visualizes data with an interactive Streamlit dashboard.
+---
 
-📌 Key Features
-✅ Kafka-based real-time event ingestion.
+## ⚙️ Project Architecture
 
-✅ Spark Streaming for session-level aggregation.
+```text
+Kafka Producer → Spark Streaming Jobs → PostgreSQL → ML Model (FastAPI) → Streamlit Dashboard
+```
 
-✅ Churn prediction using Logistic Regression.
+### Modules Breakdown
 
-✅ PostgreSQL for structured storage of KPIs and churn.
+1. **Kafka Producer**:
 
-✅ Streamlit dashboard for real-time funnel and churn analysis.
+   * Emits user events to the `user_events` topic with a biased distribution:
 
-✅ Modular & Dockerized for easy deployment.
+     * 60% `view`, 30% `add_to_cart`, 10% `purchase`.
+   * Events include: `user_id`, `event_type`, `timestamp`, `session_id`.
 
-🧱 Architecture
-mermaid
-Copy
-Edit
-flowchart TD
-    A[Kafka Producer: Simulated Events] --> B[Spark Streaming]
-    B --> C1[Funnel Aggregates → PostgreSQL]
-    B --> C2[Churn Features → Logistic Regression Model]
-    C2 --> C3[Churn Predictions → PostgreSQL]
-    C1 & C3 --> D[Streamlit Dashboard]
-📂 Project Structure
-pgsql
-Copy
-Edit
+2. **Spark Streaming Layer**:
+
+   * `consumer.py`: Reads Kafka stream, writes raw events to PostgreSQL.
+   * `aggregator.py`: Aggregates event counts per user in 10-minute windows, stores in `funnel_summary`.
+   * `churn_feature_engineering.py`:
+
+     * Consumes `funnel_summary`, creates features.
+     * Calls **FastAPI churn model** and writes predictions to `churn_prediction` table.
+     * Includes proper watermarking and windowing logic.
+
+3. **Churn Prediction Model**:
+
+   * Trained using historical funnel summaries.
+   * Features: `num_views`, `num_add_to_cart`, `num_purchases`, conversion ratios.
+   * Deployed as a **FastAPI** REST endpoint.
+   * Accepts JSON feature input and returns `churned: true/false`.
+
+4. **PostgreSQL**:
+
+   * Tables: `raw_events`, `funnel_summary`, `churn_prediction`.
+   * Stores both raw and processed data.
+
+5. **Streamlit Dashboard**:
+
+   * Shows real-time KPIs: event trend graphs, funnel metrics, churn prediction summary.
+   * Auto-refreshes every 15 seconds using `st.experimental_rerun()`.
+
+---
+
+## 🐳 Dockerized Setup
+
+All services (Kafka, Zookeeper, PostgreSQL, Spark, FastAPI, Streamlit) are containerized using **Docker Compose**.
+
+```bash
+# Start all services
+bash run_all.sh
+```
+
+---
+
+## 📁 Folder Structure
+
+```bash
 realtime-user-analytics/
+│
 ├── kafka_producer/
 │   └── producer.py
+│
 ├── spark_streaming/
 │   ├── consumer.py
 │   ├── aggregator.py
 │   └── churn_feature_engineering.py
+│
 ├── postgres_writer/
-│   └── writer.py
+│   └── db_writer.py
+│
 ├── ml_model/
 │   ├── train_churn_model.py
-│   ├── churn_model.pkl
 │   └── fastapi_app.py
+│
 ├── dashboard/
 │   └── app.py
+│
 ├── config/
 │   ├── kafka_config.json
 │   ├── spark_config.json
 │   └── db_config.json
+│
 ├── docker/
 │   └── docker-compose.yml
-├── requirements.txt
+│
 ├── run_all.sh
 └── README.md
-⚙️ Tech Stack
-Layer	Tech
-Event Stream	Apache Kafka
-Processing	Apache Spark Structured Streaming
-Storage	PostgreSQL
-Model	Scikit-learn Logistic Regression
-Dashboard	Streamlit
-Deployment	Docker, Docker Compose
-API	FastAPI (for model deployment, optional)
+```
 
-🚀 How to Run
-Pre-requisites: Docker, Python 3.10+, pip
+---
 
-1. Clone Repo
-bash
-Copy
-Edit
-git clone https://github.com/your-username/realtime-user-analytics.git
-cd realtime-user-analytics
-2. Start Docker Services
-bash
-Copy
-Edit
-docker-compose -f docker/docker-compose.yml up
-3. Install Dependencies
-bash
-Copy
-Edit
-pip install -r requirements.txt
-4. Train Churn Model
-bash
-Copy
-Edit
-python ml_model/train_churn_model.py
-5. Run Kafka Producer
-bash
-Copy
-Edit
-python kafka_producer/producer.py
-6. Start Spark Streaming Jobs
-bash
-Copy
-Edit
-python spark_streaming/consumer.py
-python spark_streaming/aggregator.py
-python spark_streaming/churn_feature_engineering.py
-7. Launch Dashboard
-bash
-Copy
-Edit
-streamlit run dashboard/app.py
-📊 Dashboard Features
-Tab	Description
-📈 Real-Time KPIs	View, Add-to-Cart, Purchase trends by time
-🔄 Funnel Summary	Conversion funnel per session/user
-⌛ User-Level Stats	Per-user event tracking
-🛑 At-Risk Users	Real-time churn prediction using ML
+## 🧠 Key Learnings and Issues Solved
 
-Dashboard auto-refreshes every 10s.
+| Phase           | Challenges Faced                     | Solution                                                          |
+| --------------- | ------------------------------------ | ----------------------------------------------------------------- |
+| Kafka Producer  | Biased event generation logic        | Used weighted random logic with `random.choices()`                |
+| Spark Streaming | Watermark correctness errors         | Tuned watermark + window duration and avoided out-of-order events |
+| PostgreSQL      | Batch inserts from Spark             | Used JDBC sink and partitioned writing                            |
+| ML Prediction   | Model deployment + real-time scoring | Used FastAPI for fast JSON API scoring                            |
+| Dashboard       | Live refresh of churn table          | Used `st.experimental_rerun()` + polling PostgreSQL               |
 
-🧠 Model Info: Churn Prediction
-Features: num_views, num_adds_to_cart
+---
 
-Target: Session that ends without purchase → churn
+## ✅ Deliverables
 
-Model: Logistic Regression (balanced, interpretable)
+* `producer.py`: Kafka event simulator
+* Spark jobs: `consumer.py`, `aggregator.py`, `churn_feature_engineering.py`
+* Trained `churn_model.pkl` and `fastapi_app.py` service
+* Streamlit dashboard at `localhost:8501`
+* Dockerized stack with single launch script `run_all.sh`
 
-Format: Trained using train_churn_model.py, saved as churn_model.pkl
+---
 
-🧪 Testing the System
-Kafka emits biased events: 60% views, 30% add-to-cart, 10% purchases.
+## 📍How to Run
 
-PostgreSQL stores tables:
+```bash
+# 1. Launch the pipeline
+bash run_all.sh
 
-user_events_raw
+# 2. Monitor Streamlit dashboard
+http://localhost:8501
 
-funnel_summary
-
-churn_predictions
-
-🔍 Interview Soundbites
-“Built an end-to-end real-time data pipeline using Kafka → Spark → PostgreSQL → Streamlit.”
-
-“Predicted churn based on session-level features using a deployed Logistic Regression model.”
-
-“Designed fully containerized environment with modular ETL + analytics pipeline.”
-
-“Dashboard auto-refreshes to show live KPIs and churn insights for business stakeholders.”
-
-📌 Future Improvements
-Add user segmentation & cohort analysis.
-
-Integrate email/SMS alerts for churned users.
-
-Use PyTorch or XGBoost for better churn prediction.
-
-Expose FastAPI endpoint for real-time scoring from external tools.
-
+# 3. Test FastAPI (optional)
+curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d '{"num_views":5,"num_add_to_cart":2,"num_purchases":0}'
+```
